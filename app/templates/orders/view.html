@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Ordine {{ ordine.numero_completo }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">
+    <i class="bi bi-file-earmark-text"></i>
+    Ordine {{ ordine.numero_completo }} — {{ ordine.fornitore_nome }}
+    <span class="badge bg-{{ ordine.stato_badge }} ms-2">{{ ordine.stato_label }}</span>
+  </h4>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('orders.lista') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    {% if ordine.stato in ('bozza', 'rifiutato') and
+         (current_user.is_admin or ordine.creato_da_id == current_user.id) %}
+      <a href="{{ url_for('orders.modifica', id=ordine.id) }}" class="btn btn-warning btn-sm">
+        <i class="bi bi-pencil"></i> Modifica
+      </a>
+    {% endif %}
+    <a href="{{ url_for('orders.stampa', id=ordine.id) }}" target="_blank"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-printer"></i> Stampa
+    </a>
+    <a href="{{ url_for('orders.esporta_docx', id=ordine.id) }}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-file-word"></i> DOCX
+    </a>
+    <a href="{{ url_for('orders.esporta_pdf', id=ordine.id) }}" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-file-pdf"></i> PDF
+    </a>
+  </div>
+</div>
+
+{% if ordine.motivo_rifiuto %}
+<div class="alert alert-danger">
+  <strong>Motivo rifiuto:</strong> {{ ordine.motivo_rifiuto }}
+</div>
+{% endif %}
+
+<!-- Azioni admin -->
+{% if current_user.is_admin and ordine.stato == 'in_attesa' %}
+<div class="card border-warning mb-4">
+  <div class="card-body d-flex align-items-center gap-3">
+    <div class="flex-grow-1">
+      <strong><i class="bi bi-bell"></i> In attesa di approvazione</strong>
+      — richiesto da {{ ordine.creato_da.nome_completo }}
+    </div>
+    <form method="post" action="{{ url_for('admin.approva', id=ordine.id) }}" class="d-inline">
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-check-circle"></i> Approva
+      </button>
+    </form>
+    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalRifiuto">
+      <i class="bi bi-x-circle"></i> Rifiuta
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- Info ordine -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-3">Dettagli ordine</h6>
+        <dl class="row mb-0">
+          <dt class="col-5">N° Ordine</dt>
+          <dd class="col-7 fw-bold">{{ ordine.numero_completo }}</dd>
+          <dt class="col-5">Data creazione</dt>
+          <dd class="col-7">{{ ordine.creato_il.strftime('%d/%m/%Y %H:%M') }}</dd>
+          <dt class="col-5">Fornitore</dt>
+          <dd class="col-7">{{ ordine.fornitore_nome }}</dd>
+          <dt class="col-5">Riferimento</dt>
+          <dd class="col-7">{{ ordine.riferimento or '—' }}</dd>
+          <dt class="col-5">Pagamento</dt>
+          <dd class="col-7">{{ ordine.pagamento or '—' }}</dd>
+          <dt class="col-5">Consegna</dt>
+          <dd class="col-7">{{ ordine.consegna or '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-3">Persone</h6>
+        <dl class="row mb-0">
+          <dt class="col-5">Richiedente</dt>
+          <dd class="col-7">{{ ordine.richiedente.nome_completo }}</dd>
+          <dt class="col-5">Emesso da</dt>
+          <dd class="col-7">{{ ordine.emesso_da.nome_completo }}</dd>
+          <dt class="col-5">Creato da</dt>
+          <dd class="col-7">{{ ordine.creato_da.nome_completo }}</dd>
+          {% if ordine.approvato_da %}
+          <dt class="col-5">{{ 'Approvato' if ordine.stato=='approvato' else 'Gestito' }} da</dt>
+          <dd class="col-7">{{ ordine.approvato_da.nome_completo }}</dd>
+          <dt class="col-5">Il</dt>
+          <dd class="col-7">{{ ordine.approvato_il.strftime('%d/%m/%Y %H:%M') }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if ordine.note %}
+<div class="alert alert-light border mb-3">
+  <strong>Note:</strong> {{ ordine.note }}
+</div>
+{% endif %}
+
+<!-- Articoli -->
+<h5><i class="bi bi-cart3"></i> Articoli</h5>
+<div class="table-responsive">
+  <table class="table table-bordered table-sm align-middle">
+    <thead class="table-primary">
+      <tr>
+        <th>Descrizione</th>
+        <th class="text-center" style="width:80px">Q.tà</th>
+        <th class="text-end" style="width:120px">P. Unitario</th>
+        <th class="text-end" style="width:100px">Sconto</th>
+        <th class="text-end" style="width:130px">Totale</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for art in ordine.articoli %}
+      <tr>
+        <td>{{ art.descrizione }}</td>
+        <td class="text-center">{{ art.quantita|int if art.quantita == art.quantita|int else art.quantita }}</td>
+        <td class="text-end font-monospace">€ {{ "%.2f"|format(art.prezzo_unitario|float) }}</td>
+        <td class="text-end font-monospace">
+          {% if art.sconto %}€ {{ "%.2f"|format(art.sconto|float) }}{% else %}—{% endif %}
+        </td>
+        <td class="text-end font-monospace fw-bold">€ {{ "%.2f"|format(art.totale) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      {% if ordine.sconto_totale %}
+      <tr class="table-light">
+        <td colspan="4" class="text-end fw-bold">Sconto totale:</td>
+        <td class="text-end font-monospace">- € {{ "%.2f"|format(ordine.sconto_totale) }}</td>
+      </tr>
+      {% endif %}
+      <tr class="table-primary">
+        <td colspan="4" class="text-end fw-bold">TOTALE (IVA inclusa):</td>
+        <td class="text-end font-monospace fw-bold fs-6">
+          € {{ "%.2f"|format(ordine.totale_netto) }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- Bottone invio per approvazione -->
+{% if ordine.stato == 'bozza' and
+     (current_user.is_admin or ordine.creato_da_id == current_user.id) %}
+<div class="mt-3">
+  <form method="post" action="{{ url_for('orders.invia', id=ordine.id) }}"
+        onsubmit="return confirm('Inviare l\'ordine per approvazione?')">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-send"></i> Invia per approvazione
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Modal rifiuto -->
+{% if current_user.is_admin %}
+<div class="modal fade" id="modalRifiuto" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('admin.rifiuta', id=ordine.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Rifiuta ordine</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Motivo del rifiuto *</label>
+          <textarea name="motivo" class="form-control" rows="3" required
+                    placeholder="Specifica il motivo..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-x-circle"></i> Rifiuta ordine
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

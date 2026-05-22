@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Gestione Utenti{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-people"></i> Utenti</h4>
+  <a href="{{ url_for('admin.nuovo_utente') }}" class="btn btn-primary">
+    <i class="bi bi-person-plus"></i> Nuovo utente
+  </a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-primary">
+      <tr>
+        <th>Cognome</th>
+        <th>Nome</th>
+        <th>Email</th>
+        <th>Ruolo</th>
+        <th>Creato il</th>
+        <th>Stato</th>
+        <th>Azioni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in utenti %}
+      <tr class="{% if not u.attivo %}table-secondary text-muted{% endif %}">
+        <td>{{ u.cognome }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <span class="badge {% if u.is_admin %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+            {{ 'Admin' if u.is_admin else 'Utente' }}
+          </span>
+        </td>
+        <td>{{ u.creato_il.strftime('%d/%m/%Y') }}</td>
+        <td>
+          <span class="badge {% if u.attivo %}bg-success{% else %}bg-secondary{% endif %}">
+            {{ 'Attivo' if u.attivo else 'Disabilitato' }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('admin.modifica_utente', id=u.id) }}"
+             class="btn btn-sm btn-outline-primary me-1">
+            <i class="bi bi-pencil"></i>
+          </a>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin.toggle_utente', id=u.id) }}"
+                class="d-inline">
+            <button type="submit" class="btn btn-sm {% if u.attivo %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                    onclick="return confirm('{{ 'Disabilitare' if u.attivo else 'Abilitare' }} {{ u.nome_completo }}?')">
+              <i class="bi {% if u.attivo %}bi-person-dash{% else %}bi-person-check{% endif %}"></i>
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="it">
+<body style="font-family:Arial,sans-serif;font-size:14px;color:#333">
+<h2 style="color:#0d6efd">Nuovo ordine in attesa di approvazione</h2>
+<p>Un nuovo ordine richiede la tua approvazione:</p>
+<table style="border-collapse:collapse;width:100%;max-width:500px">
+  <tr><td style="padding:6px;font-weight:bold;width:40%">N° Ordine</td>
+      <td style="padding:6px">{{ ordine.numero_completo }}</td></tr>
+  <tr style="background:#f5f5f5">
+      <td style="padding:6px;font-weight:bold">Fornitore</td>
+      <td style="padding:6px">{{ ordine.fornitore_nome }}</td></tr>
+  <tr><td style="padding:6px;font-weight:bold">Richiedente</td>
+      <td style="padding:6px">{{ ordine.richiedente.nome_completo }}</td></tr>
+  <tr style="background:#f5f5f5">
+      <td style="padding:6px;font-weight:bold">Creato da</td>
+      <td style="padding:6px">{{ ordine.creato_da.nome_completo }}</td></tr>
+  <tr><td style="padding:6px;font-weight:bold">Data</td>
+      <td style="padding:6px">{{ ordine.creato_il.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+  <tr style="background:#f5f5f5">
+      <td style="padding:6px;font-weight:bold">Totale (IVA incl.)</td>
+      <td style="padding:6px"><strong>€ {{ "%.2f"|format(ordine.totale_netto) }}</strong></td></tr>
+</table>
+<br>
+<p>Accedi al sistema per approvare o rifiutare l'ordine.</p>
+<hr style="border:none;border-top:1px solid #ddd">
+<p style="font-size:11px;color:#999">{{ cfg.COMPANY_NAME }} — Gestione Ordini Interni</p>
+</body>
+</html>

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+<h4 class="mb-3"><i class="bi bi-bell"></i> Ordini in attesa di approvazione</h4>
+
+{% if in_attesa %}
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-warning">
+      <tr>
+        <th>N° Ordine</th>
+        <th>Fornitore</th>
+        <th>Richiedente</th>
+        <th>Creato da</th>
+        <th>Data</th>
+        <th>Totale</th>
+        <th>Azioni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in in_attesa %}
+      <tr>
+        <td class="fw-bold">
+          <a href="{{ url_for('orders.dettaglio', id=o.id) }}">{{ o.numero_completo }}</a>
+        </td>
+        <td>{{ o.fornitore_nome }}</td>
+        <td>{{ o.richiedente.nome_completo }}</td>
+        <td>{{ o.creato_da.nome_completo }}</td>
+        <td>{{ o.creato_il.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td class="text-end font-monospace">
+          {% if o.totale_netto %}€ {{ "%.2f"|format(o.totale_netto) }}{% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('admin.approva', id=o.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-success"
+                    onclick="return confirm('Approvare l\'ordine {{ o.numero_completo }}?')">
+              <i class="bi bi-check"></i> Approva
+            </button>
+          </form>
+          <button class="btn btn-sm btn-danger ms-1"
+                  data-bs-toggle="modal" data-bs-target="#modal-{{ o.id }}">
+            <i class="bi bi-x"></i> Rifiuta
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal rifiuto per ogni ordine -->
+{% for o in in_attesa %}
+<div class="modal fade" id="modal-{{ o.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('admin.rifiuta', id=o.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Rifiuta ordine {{ o.numero_completo }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Motivo del rifiuto *</label>
+          <textarea name="motivo" class="form-control" rows="3" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-danger">Rifiuta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-check-circle display-4 text-success"></i>
+  <p class="mt-2">Nessun ordine in attesa di approvazione.</p>
+</div>
+{% endif %}
+{% endblock %}

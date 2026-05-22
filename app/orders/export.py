@@ -1,0 +1,182 @@
+from io import BytesIO
+from datetime import datetime
+
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+
+
+def _set_cell_bg(cell, hex_color):
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), hex_color)
+    tcPr.append(shd)
+
+
+def _cell_text(cell, text, bold=False, size=10, align=None, color=None):
+    cell.text = ''
+    para = cell.paragraphs[0]
+    if align == 'center':
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    elif align == 'right':
+        para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = para.add_run(str(text))
+    run.bold = bold
+    run.font.size = Pt(size)
+    if color:
+        run.font.color.rgb = RGBColor(*bytes.fromhex(color))
+    return run
+
+
+def _fmt_eur(value):
+    if value is None:
+        return ''
+    return f'€ {float(value):,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def genera_docx(ordine, cfg):
+    doc = Document()
+
+    # Margini pagina
+    for section in doc.sections:
+        section.top_margin = Cm(1.5)
+        section.bottom_margin = Cm(1.5)
+        section.left_margin = Cm(2)
+        section.right_margin = Cm(2)
+
+    # --- Intestazione azienda ---
+    h = doc.add_paragraph()
+    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = h.add_run(cfg.get('COMPANY_NAME', 'Archivis SpA'))
+    run.bold = True
+    run.font.size = Pt(14)
+
+    if cfg.get('COMPANY_ADDRESS'):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run(cfg['COMPANY_ADDRESS']).font.size = Pt(9)
+
+    doc.add_paragraph()
+
+    # --- Destinatario ---
+    doc.add_paragraph('Spett.le').runs[0].font.size = Pt(10)
+    p = doc.add_paragraph()
+    run = p.add_run(ordine.fornitore_nome.upper())
+    run.bold = True
+    run.font.size = Pt(11)
+
+    doc.add_paragraph()
+
+    # --- Tabella header ordine ---
+    t_header = doc.add_table(rows=2, cols=6)
+    t_header.style = 'Table Grid'
+
+    # Riga 1: Ordine n. | numero | (vuoti) | Data: | data
+    row0 = t_header.rows[0]
+    _cell_text(row0.cells[0], 'Ordine n.', bold=True)
+    _cell_text(row0.cells[1], ordine.numero_completo, bold=True)
+    row0.cells[1].merge(row0.cells[2])
+    row0.cells[1].merge(row0.cells[3])
+    _cell_text(row0.cells[4], 'Data:', bold=True)
+    _cell_text(row0.cells[5], ordine.creato_il.strftime('%d/%m/%Y'))
+
+    # Riga 2: Emesso da: | nome | (vuoti) | Rif.: | riferimento
+    row1 = t_header.rows[1]
+    _cell_text(row1.cells[0], 'Emesso da:', bold=True)
+    nome_emittente = ordine.emesso_da.nome_completo if ordine.emesso_da else ''
+    _cell_text(row1.cells[1], nome_emittente)
+    row1.cells[1].merge(row1.cells[2])
+    row1.cells[1].merge(row1.cells[3])
+    _cell_text(row1.cells[4], 'Rif.:', bold=True)
+    _cell_text(row1.cells[5], ordine.riferimento or '')
+
+    # Larghezze colonne header
+    widths = [Cm(2.5), Cm(5), Cm(0.1), Cm(0.1), Cm(1.5), Cm(3)]
+    for i, w in enumerate(widths):
+        for row in t_header.rows:
+            row.cells[i].width = w
+
+    doc.add_paragraph()
+
+    # --- Tabella articoli ---
+    t_art = doc.add_table(rows=1, cols=4)
+    t_art.style = 'Table Grid'
+
+    # Header
+    hdr = t_art.rows[0]
+    for i, (txt, al) in enumerate([('Descrizione', None), ('Q.tà', 'center'),
+                                    ('P.un', 'right'), ('Prezzo Totale', 'right')]):
+        _set_cell_bg(hdr.cells[i], '1F4E79')
+        _cell_text(hdr.cells[i], txt, bold=True, color='FFFFFF', align=al)
+
+    # Righe articoli
+    for art in ordine.articoli:
+        row = t_art.add_row()
+        _cell_text(row.cells[0], art.descrizione)
+        _cell_text(row.cells[1], f'{float(art.quantita):g}'.replace('.', ','), align='center')
+        _cell_text(row.cells[2], _fmt_eur(art.prezzo_unitario), align='right')
+        _cell_text(row.cells[3], _fmt_eur(art.totale), align='right')
+
+    # Riga sconto se presente
+    sconto = ordine.sconto_totale
+    if sconto:
+        row = t_art.add_row()
+        _cell_text(row.cells[0], 'SCONTO', bold=True)
+        row.cells[0].merge(row.cells[1])
+        row.cells[0].merge(row.cells[2])
+        _cell_text(row.cells[3], f'- {_fmt_eur(sconto)}', bold=True, align='right')
+
+    # Riga totale
+    row = t_art.add_row()
+    _set_cell_bg(row.cells[0], 'DDEBF7')
+    _cell_text(row.cells[0], 'TOTALE', bold=True)
+    row.cells[0].merge(row.cells[1])
+    totale_testo = f'{_fmt_eur(ordine.totale_netto)} (IVA INCLUSA)'
+    _cell_text(row.cells[2], totale_testo, bold=True, align='right')
+    _set_cell_bg(row.cells[2], 'DDEBF7')
+    _cell_text(row.cells[3], totale_testo, bold=True, align='right')
+    _set_cell_bg(row.cells[3], 'DDEBF7')
+
+    # Larghezze colonne articoli
+    art_widths = [Cm(9), Cm(1.8), Cm(2.5), Cm(3)]
+    for w_col, w in enumerate(art_widths):
+        for row in t_art.rows:
+            row.cells[w_col].width = w
+
+    doc.add_paragraph()
+
+    # --- Piè di pagina fisso ---
+    note_p = doc.add_paragraph()
+    run = note_p.add_run(
+        'IMPORTANTE: RIPORTARE IL N° ORDINE SU DDT E FATTURE. '
+        'NON SARANNO LIQUIDATE LE FATTURE SENZA IL N° ORDINE'
+    )
+    run.bold = True
+    run.font.size = Pt(9)
+
+    if ordine.pagamento:
+        doc.add_paragraph(f'PAGAMENTO: {ordine.pagamento}').runs[0].font.size = Pt(10)
+    if ordine.consegna:
+        doc.add_paragraph(f'CONSEGNA: {ordine.consegna}').runs[0].font.size = Pt(10)
+    if ordine.note:
+        doc.add_paragraph(ordine.note).runs[0].font.size = Pt(10)
+
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def genera_pdf(ordine, app):
+    from weasyprint import HTML
+    from flask import render_template
+
+    with app.app_context():
+        html = render_template('orders/print.html', ordine=ordine, cfg=app.config)
+
+    pdf = HTML(string=html, base_url=app.static_folder).write_pdf()
+    return pdf

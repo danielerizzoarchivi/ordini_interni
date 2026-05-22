@@ -1,0 +1,16 @@
+.env
+instance/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+*.db
+*.sqlite
+ordini_interni
+*.docx
+*.doc

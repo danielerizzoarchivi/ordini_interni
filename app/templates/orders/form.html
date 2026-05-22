@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block title %}{% if ordine %}Modifica Ordine{% else %}Nuovo Ordine{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">
+    <i class="bi bi-file-earmark-plus"></i>
+    {% if ordine %}Modifica Ordine {{ ordine.numero_completo }}{% else %}Nuovo Ordine{% endif %}
+  </h4>
+  <a href="{{ url_for('orders.lista') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Indietro
+  </a>
+</div>
+
+<form method="post" id="orderForm">
+
+  <div class="row g-3 mb-4">
+    <!-- Tipo e Suffisso -->
+    <div class="col-md-2">
+      <label class="form-label fw-semibold">Tipo</label>
+      <select name="tipo" class="form-select" required>
+        <option value="P" {% if not ordine or ordine.tipo=='P' %}selected{% endif %}>P – Acquisto</option>
+        <option value="C" {% if ordine and ordine.tipo=='C' %}selected{% endif %}>C – Altro</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label fw-semibold">Suffisso</label>
+      <input type="text" name="suffisso" class="form-control text-uppercase"
+             maxlength="3" placeholder="A"
+             value="{{ ordine.suffisso or '' if ordine else '' }}">
+    </div>
+
+    <!-- Fornitore -->
+    <div class="col-md-4">
+      <label class="form-label fw-semibold">Fornitore</label>
+      <select name="fornitore_id" class="form-select" id="fornitoreSelect"
+              onchange="aggiornaFornitoreNome()">
+        <option value="">-- seleziona o scrivi sotto --</option>
+        {% for f in fornitori %}
+          <option value="{{ f.id }}"
+            {% if ordine and ordine.fornitore_id == f.id %}selected{% endif %}>
+            {{ f.nome }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label fw-semibold">Nome fornitore (libero)</label>
+      <input type="text" name="fornitore_nome" id="fornitoreNome" class="form-control"
+             placeholder="Inserisci se non in lista"
+             value="{{ ordine.fornitore_nome if ordine else '' }}">
+      <div class="form-text">Lascia il campo sopra vuoto per fornitore non in lista.</div>
+    </div>
+
+    <!-- Richiedente ed emittente -->
+    <div class="col-md-4">
+      <label class="form-label fw-semibold">Richiedente</label>
+      <select name="richiedente_id" class="form-select" required>
+        {% for u in utenti %}
+          <option value="{{ u.id }}"
+            {% if ordine and ordine.richiedente_id == u.id %}selected
+            {% elif not ordine and u.id == current_user.id %}selected{% endif %}>
+            {{ u.nome_completo }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label fw-semibold">Emesso da</label>
+      <select name="emesso_da_id" class="form-select" required>
+        {% for u in utenti %}
+          <option value="{{ u.id }}"
+            {% if ordine and ordine.emesso_da_id == u.id %}selected
+            {% elif not ordine and u.id == current_user.id %}selected{% endif %}>
+            {{ u.nome_completo }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label fw-semibold">Riferimento (sede)</label>
+      <input type="text" name="riferimento" class="form-control"
+             placeholder="es. PRATO"
+             value="{{ ordine.riferimento or '' if ordine else '' }}">
+    </div>
+
+    <!-- Pagamento e consegna -->
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Modalità di pagamento</label>
+      <input type="text" name="pagamento" class="form-control"
+             list="listaPagamenti"
+             value="{{ ordine.pagamento or '' if ordine else '' }}">
+      <datalist id="listaPagamenti">
+        <option value="VISA MPS">
+        <option value="Bonifico bancario 30 gg">
+        <option value="Contrassegno">
+        <option value="PayPal">
+        <option value="Carta di credito aziendale">
+      </datalist>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label fw-semibold">Consegna</label>
+      <input type="text" name="consegna" class="form-control"
+             list="listaConsegne"
+             value="{{ ordine.consegna or '' if ordine else '' }}">
+      <datalist id="listaConsegne">
+        <option value="IMMEDIATA">
+        <option value="Entro 5 giorni lavorativi">
+        <option value="Da concordare">
+        <option value="Franco nostro magazzino">
+      </datalist>
+    </div>
+
+    <!-- Note -->
+    <div class="col-12">
+      <label class="form-label fw-semibold">Note</label>
+      <textarea name="note" class="form-control" rows="2"
+                placeholder="Note aggiuntive (opzionale)">{{ ordine.note or '' if ordine else '' }}</textarea>
+    </div>
+  </div>
+
+  <!-- Articoli -->
+  <h5 class="mb-2"><i class="bi bi-cart3"></i> Articoli</h5>
+  <div class="table-responsive mb-2">
+    <table class="table table-bordered table-sm align-middle" id="articoliTable">
+      <thead class="table-primary">
+        <tr>
+          <th style="min-width:300px">Descrizione</th>
+          <th style="width:90px">Q.tà</th>
+          <th style="width:120px">Prezzo unit. (€)</th>
+          <th style="width:110px">Sconto (€)</th>
+          <th style="width:120px">Totale (€)</th>
+          <th style="width:50px"></th>
+        </tr>
+      </thead>
+      <tbody id="articoliBody">
+        {% if ordine and ordine.articoli %}
+          {% for art in ordine.articoli %}
+          <tr>
+            <td><input type="text" name="desc[]" class="form-control form-control-sm"
+                       value="{{ art.descrizione }}" required></td>
+            <td><input type="number" name="qta[]" class="form-control form-control-sm qta"
+                       step="0.01" min="0" value="{{ art.quantita }}" onchange="ricalcola(this)"></td>
+            <td><input type="number" name="prezzo[]" class="form-control form-control-sm prezzo"
+                       step="0.01" min="0" value="{{ art.prezzo_unitario }}" onchange="ricalcola(this)"></td>
+            <td><input type="number" name="sconto[]" class="form-control form-control-sm sconto"
+                       step="0.01" min="0" value="{{ art.sconto or 0 }}" onchange="ricalcolaGrandTotale()"></td>
+            <td class="text-end fw-bold totale-cella">
+              {{ "%.2f"|format(art.totale) }}
+            </td>
+            <td class="text-center">
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="rimuoviRiga(this)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td><input type="text" name="desc[]" class="form-control form-control-sm" required></td>
+            <td><input type="number" name="qta[]" class="form-control form-control-sm qta"
+                       step="0.01" min="0" value="1" onchange="ricalcola(this)"></td>
+            <td><input type="number" name="prezzo[]" class="form-control form-control-sm prezzo"
+                       step="0.01" min="0" value="0" onchange="ricalcola(this)"></td>
+            <td><input type="number" name="sconto[]" class="form-control form-control-sm sconto"
+                       step="0.01" min="0" value="0" onchange="ricalcolaGrandTotale()"></td>
+            <td class="text-end fw-bold totale-cella">0.00</td>
+            <td class="text-center">
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="rimuoviRiga(this)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+      <tfoot>
+        <tr class="table-light">
+          <td colspan="4" class="text-end fw-bold">TOTALE (IVA inclusa):</td>
+          <td class="text-end fw-bold" id="grandTotale">0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <button type="button" class="btn btn-outline-primary btn-sm mb-4" onclick="aggiungiRiga()">
+    <i class="bi bi-plus-circle"></i> Aggiungi articolo
+  </button>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-success">
+      <i class="bi bi-save"></i>
+      {% if ordine %}Salva modifiche{% else %}Crea ordine{% endif %}
+    </button>
+    <a href="{{ url_for('orders.lista') }}" class="btn btn-outline-secondary">Annulla</a>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function aggiornaFornitoreNome() {
+  const sel = document.getElementById('fornitoreSelect');
+  const txt = document.getElementById('fornitoreNome');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.value) {
+    txt.value = opt.text;
+  }
+}
+
+function ricalcola(input) {
+  const row = input.closest('tr');
+  const qta = parseFloat(row.querySelector('.qta').value) || 0;
+  const prezzo = parseFloat(row.querySelector('.prezzo').value) || 0;
+  const tot = qta * prezzo;
+  row.querySelector('.totale-cella').textContent = tot.toFixed(2);
+  ricalcolaGrandTotale();
+}
+
+function ricalcolaGrandTotale() {
+  let grand = 0;
+  document.querySelectorAll('#articoliBody tr').forEach(row => {
+    const tot = parseFloat(row.querySelector('.totale-cella')?.textContent || 0) || 0;
+    const sconto = parseFloat(row.querySelector('.sconto')?.value || 0) || 0;
+    grand += tot - sconto;
+  });
+  document.getElementById('grandTotale').textContent = grand.toFixed(2);
+}
+
+function aggiungiRiga() {
+  const tbody = document.getElementById('articoliBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="desc[]" class="form-control form-control-sm" required></td>
+    <td><input type="number" name="qta[]" class="form-control form-control-sm qta"
+               step="0.01" min="0" value="1" onchange="ricalcola(this)"></td>
+    <td><input type="number" name="prezzo[]" class="form-control form-control-sm prezzo"
+               step="0.01" min="0" value="0" onchange="ricalcola(this)"></td>
+    <td><input type="number" name="sconto[]" class="form-control form-control-sm sconto"
+               step="0.01" min="0" value="0" onchange="ricalcolaGrandTotale()"></td>
+    <td class="text-end fw-bold totale-cella">0.00</td>
+    <td class="text-center">
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="rimuoviRiga(this)">
+        <i class="bi bi-trash"></i>
+      </button>
+    </td>`;
+  tbody.appendChild(tr);
+}
+
+function rimuoviRiga(btn) {
+  const tbody = document.getElementById('articoliBody');
+  if (tbody.rows.length <= 1) return;
+  btn.closest('tr').remove();
+  ricalcolaGrandTotale();
+}
+
+document.addEventListener('DOMContentLoaded', ricalcolaGrandTotale);
+</script>
+{% endblock %}

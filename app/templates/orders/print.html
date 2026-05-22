@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Ordine {{ ordine.numero_completo }} — {{ ordine.fornitore_nome }}</title>
+  <style>
+    @page { size: A4; margin: 2cm; }
+    * { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+    body { margin: 0; }
+    .header-azienda { text-align: center; margin-bottom: 12pt; }
+    .header-azienda h1 { font-size: 16pt; font-weight: bold; margin: 0; }
+    .header-azienda p { font-size: 9pt; margin: 2px 0; }
+    .spettabile { margin-bottom: 10pt; }
+    .spettabile .label { font-size: 9pt; }
+    .spettabile .nome { font-size: 12pt; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; }
+    .tbl-header td { border: 1px solid #aaa; padding: 4px 6px; }
+    .tbl-header .label { font-weight: bold; font-size: 9pt; }
+    .spacer { height: 10pt; }
+    .tbl-items th {
+      background-color: #1F4E79; color: white;
+      border: 1px solid #aaa; padding: 5px 6px; font-weight: bold;
+    }
+    .tbl-items td { border: 1px solid #ccc; padding: 4px 6px; }
+    .tbl-items .tot-row td { background: #DDEBF7; font-weight: bold; }
+    .tbl-items .sconto-row td { font-style: italic; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .footer-note { margin-top: 10pt; font-size: 9pt; font-weight: bold; }
+    .footer-info { margin-top: 6pt; }
+    @media screen {
+      body { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
+      .btn-print { display: block; text-align: center; margin-bottom: 20px; }
+      .btn-print button {
+        padding: 8px 24px; background: #0d6efd; color: white;
+        border: none; border-radius: 4px; cursor: pointer; font-size: 11pt;
+      }
+    }
+    @media print { .btn-print { display: none; } }
+  </style>
+</head>
+<body>
+
+<div class="btn-print">
+  <button onclick="window.print()">🖨 Stampa / Salva PDF</button>
+  &nbsp;
+  <button onclick="window.close()">✕ Chiudi</button>
+</div>
+
+<!-- Intestazione azienda -->
+<div class="header-azienda">
+  <h1>{{ cfg.COMPANY_NAME }}</h1>
+  {% if cfg.COMPANY_ADDRESS %}<p>{{ cfg.COMPANY_ADDRESS }}</p>{% endif %}
+  {% if cfg.COMPANY_PHONE or cfg.COMPANY_EMAIL %}
+  <p>
+    {% if cfg.COMPANY_PHONE %}Tel: {{ cfg.COMPANY_PHONE }}{% endif %}
+    {% if cfg.COMPANY_EMAIL %} — {{ cfg.COMPANY_EMAIL }}{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+<hr style="border-top: 2px solid #1F4E79; margin-bottom: 10pt;">
+
+<!-- Destinatario -->
+<div class="spettabile">
+  <div class="label">Spett.le</div>
+  <div class="nome">{{ ordine.fornitore_nome | upper }}</div>
+</div>
+
+<!-- Tabella info ordine -->
+<table class="tbl-header" style="margin-bottom: 0;">
+  <tr>
+    <td class="label" style="width:15%">Ordine n.</td>
+    <td style="width:45%" colspan="2"><strong>{{ ordine.numero_completo }}</strong></td>
+    <td class="label" style="width:10%">Data:</td>
+    <td style="width:30%">{{ ordine.creato_il.strftime('%d/%m/%Y') }}</td>
+  </tr>
+  <tr>
+    <td class="label">Emesso da:</td>
+    <td colspan="2">{{ ordine.emesso_da.nome_completo }}</td>
+    <td class="label">Rif.:</td>
+    <td>{{ ordine.riferimento or '' }}</td>
+  </tr>
+</table>
+
+<div class="spacer"></div>
+
+<!-- Tabella articoli -->
+<table class="tbl-items">
+  <thead>
+    <tr>
+      <th style="width:55%">Descrizione</th>
+      <th class="text-center" style="width:10%">Q.tà</th>
+      <th class="text-right" style="width:15%">P.un</th>
+      <th class="text-right" style="width:20%">Prezzo Totale</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for art in ordine.articoli %}
+    <tr>
+      <td>{{ art.descrizione }}</td>
+      <td class="text-center">
+        {{ art.quantita|int if art.quantita == art.quantita|int else art.quantita }}
+      </td>
+      <td class="text-right">{{ "%.2f"|format(art.prezzo_unitario|float) }}</td>
+      <td class="text-right">€ {{ "%.2f"|format(art.totale) }}</td>
+    </tr>
+    {% endfor %}
+
+    {% if ordine.sconto_totale %}
+    <tr class="sconto-row">
+      <td colspan="3" class="text-right">SCONTO</td>
+      <td class="text-right">- € {{ "%.2f"|format(ordine.sconto_totale) }}</td>
+    </tr>
+    {% endif %}
+
+    <tr class="tot-row">
+      <td colspan="2"></td>
+      <td class="text-right">€ {{ "%.2f"|format(ordine.totale_netto) }} (IVA INCLUSA)</td>
+      <td class="text-right">€ {{ "%.2f"|format(ordine.totale_netto) }} (IVA INCLUSA)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="spacer"></div>
+
+<!-- Note fisse e variabili -->
+<div class="footer-note">
+  IMPORTANTE: RIPORTARE IL N° ORDINE SU DDT E FATTURE.
+  NON SARANNO LIQUIDATE LE FATTURE SENZA IL N° ORDINE
+</div>
+
+<div class="footer-info">
+  {% if ordine.pagamento %}<p><strong>PAGAMENTO:</strong> {{ ordine.pagamento }}</p>{% endif %}
+  {% if ordine.consegna %}<p><strong>CONSEGNA:</strong> {{ ordine.consegna }}</p>{% endif %}
+  {% if ordine.note %}<p>{{ ordine.note }}</p>{% endif %}
+</div>
+
+{% if ordine.stato == 'approvato' %}
+<div style="margin-top: 20pt; border-top: 1px solid #aaa; padding-top: 6pt; font-size: 9pt; color: #555;">
+  Approvato da {{ ordine.approvato_da.nome_completo }}
+  il {{ ordine.approvato_il.strftime('%d/%m/%Y %H:%M') }}
+</div>
+{% endif %}
+
+</body>
+</html>

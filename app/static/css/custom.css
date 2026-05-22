@@ -1,0 +1,7 @@
+body { background-color: #f8f9fa; }
+.navbar { box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+.card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.table th { font-weight: 600; }
+.font-monospace { font-family: 'Courier New', monospace; }
+.badge { font-size: .75em; }
+dl.row dt { color: #6c757d; font-weight: 500; }

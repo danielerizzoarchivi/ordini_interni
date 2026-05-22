@@ -1,0 +1,10 @@
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+Flask-Login>=0.6
+Flask-Mail>=0.10
+Flask-WTF>=1.2
+WTForms>=3.1
+python-docx>=1.1
+WeasyPrint>=62
+python-dotenv>=1.0
+email-validator>=2.1

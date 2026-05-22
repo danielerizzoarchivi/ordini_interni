@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="it">
+<body style="font-family:Arial,sans-serif;font-size:14px;color:#333">
+<h2 style="color:#198754">✅ Ordine approvato</h2>
+<p>L'ordine <strong>{{ ordine.numero_completo }}</strong> è stato <strong>approvato</strong>.</p>
+<table style="border-collapse:collapse;width:100%;max-width:500px">
+  <tr><td style="padding:6px;font-weight:bold;width:40%">N° Ordine</td>
+      <td style="padding:6px">{{ ordine.numero_completo }}</td></tr>
+  <tr style="background:#f5f5f5">
+      <td style="padding:6px;font-weight:bold">Fornitore</td>
+      <td style="padding:6px">{{ ordine.fornitore_nome }}</td></tr>
+  <tr><td style="padding:6px;font-weight:bold">Totale (IVA incl.)</td>
+      <td style="padding:6px"><strong>€ {{ "%.2f"|format(ordine.totale_netto) }}</strong></td></tr>
+  <tr style="background:#f5f5f5">
+      <td style="padding:6px;font-weight:bold">Approvato da</td>
+      <td style="padding:6px">{{ ordine.approvato_da.nome_completo }}</td></tr>
+  <tr><td style="padding:6px;font-weight:bold">Data approvazione</td>
+      <td style="padding:6px">{{ ordine.approvato_il.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+</table>
+<hr style="border:none;border-top:1px solid #ddd">
+<p style="font-size:11px;color:#999">{{ cfg.COMPANY_NAME }} — Gestione Ordini Interni</p>
+</body>
+</html>
