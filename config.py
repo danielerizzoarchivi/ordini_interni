@@ -15,7 +15,7 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'ordini@archivispa.it')
 
-    COMPANY_NAME = os.environ.get('COMPANY_NAME', 'Archivis SpA')
+    COMPANY_NAME = os.environ.get('COMPANY_NAME', 'Archivi SpA')
     COMPANY_ADDRESS = os.environ.get('COMPANY_ADDRESS', '')
     COMPANY_EMAIL = os.environ.get('COMPANY_EMAIL', '')
     COMPANY_PHONE = os.environ.get('COMPANY_PHONE', '')

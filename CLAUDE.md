@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Web application (Flask + Python) for managing internal purchase orders ("ordini interni") at Archivis SpA. Orders follow an approval workflow and can be exported as DOCX or PDF.
+Web application (Flask + Python) for managing internal purchase orders ("ordini interni") at Archivi SpA. Orders follow an approval workflow and can be exported as DOCX or PDF.
 
 ## Commands
 
