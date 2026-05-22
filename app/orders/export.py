@@ -41,6 +41,24 @@ def _clear_body(doc):
         body.append(sectPr)
 
 
+def _set_table_borders(table):
+    """Applica bordi griglia a tutti i lati della tabella (equivalente a 'Table Grid')."""
+    tbl = table._tbl
+    tblPr = tbl.find(qn('w:tblPr'))
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        tbl.insert(0, tblPr)
+    tblBorders = OxmlElement('w:tblBorders')
+    for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        el = OxmlElement(f'w:{side}')
+        el.set(qn('w:val'), 'single')
+        el.set(qn('w:sz'), '4')
+        el.set(qn('w:space'), '0')
+        el.set(qn('w:color'), 'auto')
+        tblBorders.append(el)
+    tblPr.append(tblBorders)
+
+
 def _set_cell_bg(cell, hex_color):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -88,7 +106,7 @@ def genera_docx(ordine, cfg):
 
     # --- Tabella header ordine ---
     t_header = doc.add_table(rows=2, cols=6)
-    t_header.style = 'Table Grid'
+    _set_table_borders(t_header)
 
     row0 = t_header.rows[0]
     _cell_text(row0.cells[0], 'Ordine n.', bold=True)
@@ -116,7 +134,7 @@ def genera_docx(ordine, cfg):
 
     # --- Tabella articoli ---
     t_art = doc.add_table(rows=1, cols=4)
-    t_art.style = 'Table Grid'
+    _set_table_borders(t_art)
 
     hdr = t_art.rows[0]
     for i, (txt, al) in enumerate([('Descrizione', None), ('Q.tà', 'center'),
