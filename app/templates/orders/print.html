@@ -4,12 +4,41 @@
   <meta charset="UTF-8">
   <title>Ordine {{ ordine.numero_completo }} — {{ ordine.fornitore_nome }}</title>
   <style>
-    @page { size: A4; margin: 2cm; }
+    @page {
+      size: A4;
+      margin-top: 4cm;
+      margin-right: 2cm;
+      margin-bottom: 2.5cm;
+      margin-left: 2cm;
+
+      @top-left {
+        content: element(page-header);
+        vertical-align: bottom;
+      }
+      @bottom-left {
+        content: element(page-footer);
+        vertical-align: top;
+      }
+    }
+
     * { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
     body { margin: 0; }
-    .header-azienda { text-align: center; margin-bottom: 12pt; }
-    .header-azienda h1 { font-size: 16pt; font-weight: bold; margin: 0; }
-    .header-azienda p { font-size: 9pt; margin: 2px 0; }
+
+    #page-header {
+      position: running(page-header);
+      width: 100%;
+      padding-bottom: 6pt;
+      border-bottom: 2px solid #1F4E79;
+    }
+    #page-header img { height: 2.2cm; }
+
+    #page-footer {
+      position: running(page-footer);
+      width: 100%;
+      padding-top: 4pt;
+    }
+    #page-footer img { width: 100%; display: block; }
+
     .spettabile { margin-bottom: 10pt; }
     .spettabile .label { font-size: 9pt; }
     .spettabile .nome { font-size: 12pt; font-weight: bold; }
@@ -28,8 +57,21 @@
     .text-center { text-align: center; }
     .footer-note { margin-top: 10pt; font-size: 9pt; font-weight: bold; }
     .footer-info { margin-top: 6pt; }
+
     @media screen {
       body { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
+      #page-header {
+        position: static;
+        border-bottom: 2px solid #1F4E79;
+        margin-bottom: 12pt;
+        padding-bottom: 6pt;
+      }
+      #page-footer {
+        position: static;
+        margin-top: 20pt;
+        border-top: 1px solid #ccc;
+        padding-top: 6pt;
+      }
       .btn-print { display: block; text-align: center; margin-bottom: 20px; }
       .btn-print button {
         padding: 8px 24px; background: #0d6efd; color: white;
@@ -41,25 +83,19 @@
 </head>
 <body>
 
+<!-- Header e footer della carta intestata (usati come running elements nel PDF) -->
+<div id="page-header">
+  <img src="{{ url_for('static', filename='img/carta_intestata/image3.png') }}" alt="Archivis SpA">
+</div>
+<div id="page-footer">
+  <img src="{{ url_for('static', filename='img/carta_intestata/image5.png') }}" alt="">
+</div>
+
 <div class="btn-print">
   <button onclick="window.print()">🖨 Stampa / Salva PDF</button>
   &nbsp;
   <button onclick="window.close()">✕ Chiudi</button>
 </div>
-
-<!-- Intestazione azienda -->
-<div class="header-azienda">
-  <h1>{{ cfg.COMPANY_NAME }}</h1>
-  {% if cfg.COMPANY_ADDRESS %}<p>{{ cfg.COMPANY_ADDRESS }}</p>{% endif %}
-  {% if cfg.COMPANY_PHONE or cfg.COMPANY_EMAIL %}
-  <p>
-    {% if cfg.COMPANY_PHONE %}Tel: {{ cfg.COMPANY_PHONE }}{% endif %}
-    {% if cfg.COMPANY_EMAIL %} — {{ cfg.COMPANY_EMAIL }}{% endif %}
-  </p>
-  {% endif %}
-</div>
-
-<hr style="border-top: 2px solid #1F4E79; margin-bottom: 10pt;">
 
 <!-- Destinatario -->
 <div class="spettabile">
